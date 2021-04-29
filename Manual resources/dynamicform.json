@@ -1,0 +1,81 @@
+[
+    {
+        "label":  "Details",
+        "fields":  [
+                       {
+                           "key":  "commonname",
+                           "templateOptions":  {
+                                                   "label":  "Naam",
+                                                   "placeholder":  "CommonName",
+                                                   "required":  true,
+                                                   "minLength":  2
+                                               },
+                           "type":  "input",
+                           "summaryVisibility":  "Show",
+                           "requiresTemplateOptions":  true,
+                           "requiresKey":  true
+                       }
+                   ]
+    },
+    {
+        "label":  "Naming",
+        "fields":  [
+                       {
+                           "key":  "naming",
+                           "templateOptions":  {
+                                                   "label":  "Naming",
+                                                   "required":  true,
+                                                   "grid":  {
+                                                                "columns":  [
+                                                                                {
+                                                                                    "headerName":  "Displayname",
+                                                                                    "field":  "displayname"
+                                                                                },
+                                                                                {
+                                                                                    "headerName":  "Common Name",
+                                                                                    "field":  "commonName"
+                                                                                },
+                                                                                {
+                                                                                    "headerName":  "Samaccountname",
+                                                                                    "field":  "samaccountname"
+                                                                                },
+                                                                                {
+                                                                                    "headerName":  "Mail",
+                                                                                    "field":  "mail"
+                                                                                },
+                                                                                {
+                                                                                    "headerName":  "Alias",
+                                                                                    "field":  "alias"
+                                                                                },
+                                                                                {
+                                                                                    "headerName":  "User Principal Name",
+                                                                                    "field":  "userPrincipalName"
+                                                                                }
+                                                                            ],
+                                                                "height":  300,
+                                                                "rowSelection":  "single"
+                                                            },
+                                                   "dataSourceConfig":  {
+                                                                            "dataSourceGuid":  "$dataSourceGuid_0",
+                                                                            "input":  {
+                                                                                          "propertyInputs":  [
+                                                                                                                 {
+                                                                                                                     "propertyName":  "CommonName",
+                                                                                                                     "otherFieldValue":  {
+                                                                                                                                             "otherFieldKey":  "commonname"
+                                                                                                                                         }
+                                                                                                                 }
+                                                                                                             ]
+                                                                                      }
+                                                                        },
+                                                   "useDefault":  true,
+                                                   "defaultSelectorProperty":  "displayname"
+                                               },
+                           "type":  "grid",
+                           "summaryVisibility":  "Show",
+                           "requiresTemplateOptions":  true,
+                           "requiresKey":  true
+                       }
+                   ]
+    }
+]
