@@ -31,7 +31,7 @@ try {
         
         
         Write-information "Searching for AD user sAMAccountName=$sAMAccountName or userPrincipalName=$upn"
-        $found = Get-ADUser -Filter{sAMAccountName -eq $sAMAccountName -or userPrincipalName -eq $upn}
+        $found = Get-ADGroup -Filter{sAMAccountName -eq $sAMAccountName -or userPrincipalName -eq $upn}
     
         if(@($found).count -eq 0) {
             $returnObject = @{samaccountname=$sAMAccountName; displayname=$displayName; userPrincipalName=$upn ; mail=$mailadres ; commonName=$cn; alias=$sAMAccountName}
