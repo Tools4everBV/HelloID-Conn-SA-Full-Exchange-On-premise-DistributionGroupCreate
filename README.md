@@ -5,7 +5,13 @@ This HelloID Service Automation Delegated Form provides Exchange On-Premise Dist
  2. If the name already exists a iteration is added or you can adjust the name
  3. Confirm the names generated
  4. Create the distribution group
- 
+
+## Versioning
+| Version | Description | Date |
+| - | - | - |
+| 1.0.1   | Added version number and updated all-in-one script | 2021/11/16  |
+| 1.0.0   | Initial release | 2021/04/29  |
+
 <!-- TABLE OF CONTENTS -->
 ## Table of Contents
 * [Description](#description)
@@ -45,5 +51,8 @@ This Powershell data source runs an Active Directory query to verify the name of
 ### Delegated form task 'Exchange-on-premise-create-distribution-group'
 This delegated form task will create the distribution group in Exchange with a corresponding AD group.
 
-# HelloID Docs
+## Getting help
+_If you need help, feel free to ask questions on our [forum](https://forum.helloid.com/forum/helloid-connectors/service-automation/589-helloid-sa-exchange-on-premises-create-distribution-group)_
+
+## HelloID Docs
 The official HelloID documentation can be found at: https://docs.helloid.com/
