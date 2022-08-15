@@ -21,31 +21,29 @@ $tmpName = @'
 ADdistributionGroupsOU
 '@ 
 $tmpValue = @'
-OU=Distribution Groups,OU=Groups,OU=HelloID,DC=T4EJB,DC=local
+OU=Distribution Groups,OU=Groups,DC=Enyoi,DC=local
 '@ 
 $globalHelloIDVariables.Add([PSCustomObject]@{name = $tmpName; value = $tmpValue; secret = "False"});
 
-#Global variable #2 >> exchangeAdminPassword
-$tmpName = @'
-exchangeAdminPassword
-'@ 
-$tmpValue = "" 
-$globalHelloIDVariables.Add([PSCustomObject]@{name = $tmpName; value = $tmpValue; secret = "True"});
-
-#Global variable #3 >> exchangeAdminUsername
-$tmpName = @'
-exchangeAdminUsername
-'@ 
-$tmpValue = @'
-TestAdmin@freque.nl
-'@ 
-$globalHelloIDVariables.Add([PSCustomObject]@{name = $tmpName; value = $tmpValue; secret = "False"});
-
-#Global variable #4 >> ExchangeConnectionUri
+#Global variable #2 >> ExchangeConnectionUri
 $tmpName = @'
 ExchangeConnectionUri
 '@ 
 $tmpValue = "" 
+$globalHelloIDVariables.Add([PSCustomObject]@{name = $tmpName; value = $tmpValue; secret = "False"});
+
+#Global variable #3 >> ExchangeAdminPassword
+$tmpName = @'
+ExchangeAdminPassword
+'@ 
+$tmpValue = "" 
+$globalHelloIDVariables.Add([PSCustomObject]@{name = $tmpName; value = $tmpValue; secret = "False"});
+
+#Global variable #4 >> ExchangeAdminUsername
+$tmpName = @'
+ExchangeAdminUsername
+'@ 
+$tmpValue = ""  
 $globalHelloIDVariables.Add([PSCustomObject]@{name = $tmpName; value = $tmpValue; secret = "False"});
 
 #Global variable #5 >> ADuserUPNsuffix
@@ -53,7 +51,7 @@ $tmpName = @'
 ADuserUPNsuffix
 '@ 
 $tmpValue = @'
-enyoi-media.local
+Enyoi.local
 '@ 
 $globalHelloIDVariables.Add([PSCustomObject]@{name = $tmpName; value = $tmpValue; secret = "False"});
 
@@ -120,7 +118,7 @@ function Invoke-HelloIDGlobalVariable {
                 secret   = $Secret;
                 ItemType = 0;
             }    
-            $body = ConvertTo-Json -InputObject $body
+            $body = ConvertTo-Json -InputObject $body -Depth 100
     
             $uri = ($script:PortalBaseUrl + "api/v1/automation/variable")
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
@@ -166,7 +164,7 @@ function Invoke-HelloIDAutomationTask {
                 objectGuid          = $ObjectGuid;
                 variables           = (ConvertFrom-Json-WithEmptyArray($Variables));
             }
-            $body = ConvertTo-Json -InputObject $body
+            $body = ConvertTo-Json -InputObject $body -Depth 100
     
             $uri = ($script:PortalBaseUrl +"api/v1/automationtasks/powershell")
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
@@ -221,7 +219,7 @@ function Invoke-HelloIDDatasource {
                 script             = $DatasourcePsScript;
                 input              = (ConvertFrom-Json-WithEmptyArray($DatasourceInput));
             }
-            $body = ConvertTo-Json -InputObject $body
+            $body = ConvertTo-Json -InputObject $body -Depth 100
       
             $uri = ($script:PortalBaseUrl +"api/v1/datasource")
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
@@ -286,10 +284,11 @@ function Invoke-HelloIDDelegatedForm {
     param(
         [parameter(Mandatory)][String]$DelegatedFormName,
         [parameter(Mandatory)][String]$DynamicFormGuid,
-        [parameter()][String][AllowEmptyString()]$AccessGroups,
+        [parameter()][Array][AllowEmptyString()]$AccessGroups,
         [parameter()][String][AllowEmptyString()]$Categories,
         [parameter(Mandatory)][String]$UseFaIcon,
         [parameter()][String][AllowEmptyString()]$FaIcon,
+        [parameter()][String][AllowEmptyString()]$task,
         [parameter(Mandatory)][Ref]$returnObject
     )
     $delegatedFormCreated = $false
@@ -309,11 +308,16 @@ function Invoke-HelloIDDelegatedForm {
                 name            = $DelegatedFormName;
                 dynamicFormGUID = $DynamicFormGuid;
                 isEnabled       = "True";
-                accessGroups    = (ConvertFrom-Json-WithEmptyArray($AccessGroups));
                 useFaIcon       = $UseFaIcon;
                 faIcon          = $FaIcon;
-            }    
-            $body = ConvertTo-Json -InputObject $body
+                task            = ConvertFrom-Json -inputObject $task;
+            }
+            if(-not[String]::IsNullOrEmpty($AccessGroups)) { 
+                $body += @{
+                    accessGroups    = (ConvertFrom-Json-WithEmptyArray($AccessGroups));
+                }
+            }
+            $body = ConvertTo-Json -InputObject $body -Depth 100
     
             $uri = ($script:PortalBaseUrl +"api/v1/delegatedforms")
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
@@ -338,6 +342,8 @@ function Invoke-HelloIDDelegatedForm {
     $returnObject.value.guid = $delegatedFormGuid
     $returnObject.value.created = $delegatedFormCreated
 }
+
+
 <# Begin: HelloID Global Variables #>
 foreach ($item in $globalHelloIDVariables) {
 	Invoke-HelloIDGlobalVariable -Name $item.name -Value $item.value -Secret $item.secret 
@@ -428,19 +434,23 @@ Invoke-HelloIDDynamicForm -FormName $dynamicFormName -FormSchema $tmpSchema  -re
 
 <# Begin: Delegated Form Access Groups and Categories #>
 $delegatedFormAccessGroupGuids = @()
-foreach($group in $delegatedFormAccessGroupNames) {
-    try {
-        $uri = ($script:PortalBaseUrl +"api/v1/groups/$group")
-        $response = Invoke-RestMethod -Method Get -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false
-        $delegatedFormAccessGroupGuid = $response.groupGuid
-        $delegatedFormAccessGroupGuids += $delegatedFormAccessGroupGuid
-        
-        Write-Information "HelloID (access)group '$group' successfully found$(if ($script:debugLogging -eq $true) { ": " + $delegatedFormAccessGroupGuid })"
-    } catch {
-        Write-Error "HelloID (access)group '$group', message: $_"
+if(-not[String]::IsNullOrEmpty($delegatedFormAccessGroupNames)){
+    foreach($group in $delegatedFormAccessGroupNames) {
+        try {
+            $uri = ($script:PortalBaseUrl +"api/v1/groups/$group")
+            $response = Invoke-RestMethod -Method Get -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false
+            $delegatedFormAccessGroupGuid = $response.groupGuid
+            $delegatedFormAccessGroupGuids += $delegatedFormAccessGroupGuid
+            
+            Write-Information "HelloID (access)group '$group' successfully found$(if ($script:debugLogging -eq $true) { ": " + $delegatedFormAccessGroupGuid })"
+        } catch {
+            Write-Error "HelloID (access)group '$group', message: $_"
+        }
+    }
+    if($null -ne $delegatedFormAccessGroupGuids){
+        $delegatedFormAccessGroupGuids = ($delegatedFormAccessGroupGuids | Select-Object -Unique | ConvertTo-Json -Depth 100 -Compress)
     }
 }
-$delegatedFormAccessGroupGuids = ($delegatedFormAccessGroupGuids | Select-Object -Unique | ConvertTo-Json -Compress)
 
 $delegatedFormCategoryGuids = @()
 foreach($category in $delegatedFormCategories) {
@@ -456,7 +466,7 @@ foreach($category in $delegatedFormCategories) {
         $body = @{
             name = @{"en" = $category};
         }
-        $body = ConvertTo-Json -InputObject $body
+        $body = ConvertTo-Json -InputObject $body -Depth 100
 
         $uri = ($script:PortalBaseUrl +"api/v1/delegatedformcategories")
         $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
@@ -466,7 +476,7 @@ foreach($category in $delegatedFormCategories) {
         Write-Information "HelloID Delegated Form category '$category' successfully created$(if ($script:debugLogging -eq $true) { ": " + $tmpGuid })"
     }
 }
-$delegatedFormCategoryGuids = (ConvertTo-Json -InputObject $delegatedFormCategoryGuids -Compress)
+$delegatedFormCategoryGuids = (ConvertTo-Json -InputObject $delegatedFormCategoryGuids -Depth 100 -Compress)
 <# End: Delegated Form Access Groups and Categories #>
 
 <# Begin: Delegated Form #>
@@ -474,77 +484,10 @@ $delegatedFormRef = [PSCustomObject]@{guid = $null; created = $null}
 $delegatedFormName = @'
 Exchange on-premise - Create new distribution list
 '@
-Invoke-HelloIDDelegatedForm -DelegatedFormName $delegatedFormName -DynamicFormGuid $dynamicFormGuid -AccessGroups $delegatedFormAccessGroupGuids -Categories $delegatedFormCategoryGuids -UseFaIcon "True" -FaIcon "fa fa-at" -returnObject ([Ref]$delegatedFormRef) 
-<# End: Delegated Form #>
-
-<# Begin: Delegated Form Task #>
-if($delegatedFormRef.created -eq $true) { 
-	$tmpScript = @'
-<#----- Exchange On-Premises: Start -----#>
-# Connect to Exchange
-try{
-    $adminSecurePassword = ConvertTo-SecureString -String "$ExchangeAdminPassword" -AsPlainText -Force
-    $adminCredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $ExchangeAdminUsername,$adminSecurePassword
-    $sessionOption = New-PSSessionOption -SkipCACheck -SkipCNCheck -SkipRevocationCheck
-    $exchangeSession = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri $exchangeConnectionUri -Credential $adminCredential -SessionOption $sessionOption -ErrorAction Stop 
-    #-AllowRedirection
-    $null = Import-PSSession $exchangeSession -DisableNameChecking -AllowClobber
-    HID-Write-Status -Message "Successfully connected to Exchange using the URI [$exchangeConnectionUri]" -Event Success
-} catch {
-    HID-Write-Status -Message "Error connecting to Exchange using the URI [$exchangeConnectionUri]" -Event Error
-    HID-Write-Status -Message "Error at line: $($_.InvocationInfo.ScriptLineNumber - 79): $($_.Exception.Message)" -Event Error
-    if($debug -eq $true){
-        HID-Write-Status -Message "$($_.Exception)" -Event Error
-    }
-    HID-Write-Summary -Message "Failed to connect to Exchange using the URI [$exchangeConnectionUri]" -Event Failed
-    throw $_
-}
-
-# Create distributiongroup
-try{
-    $exchangeDistributionGroupParams = @{
-        Name             = $commonname
-        Alias            = $alias
-        DisplayName      = $displayname
-        SamAccountName   = $samaccountname
-        OrganizationalUnit = $ADdistributionGroupsOU
-    }
-    
-    New-DistributionGroup @exchangeDistributionGroupParams -ErrorAction Stop
-    HID-Write-Status -Message "Successfully created distributiongroup for $commonname" -Event Success    
-    
-}catch{
-    HID-Write-Status -Message "Error creating distributiongroup for $commonname" -Event Error
-    throw $_
-}
-
-
-# Disconnect from Exchange
-try{
-    Remove-PsSession -Session $exchangeSession -Confirm:$false -ErrorAction Stop
-    HID-Write-Status -Message "Successfully disconnected from Exchange" -Event Success
-} catch {
-    HID-Write-Status -Message "Error disconnecting from Exchange" -Event Error
-    HID-Write-Status -Message "Error at line: $($_.InvocationInfo.ScriptLineNumber - 79): $($_.Exception.Message)" -Event Error
-    if($debug -eq $true){
-        HID-Write-Status -Message "$($_.Exception)" -Event Error
-    }
-    HID-Write-Summary -Message "Failed to disconnect from Exchange" -Event Failed
-    throw $_
-}
-<#----- Exchange On-Premises: End -----#>
-'@; 
-
-	$tmpVariables = @'
-[{"name":"alias","value":"{{form.naming.alias}}","secret":false,"typeConstraint":"string"},{"name":"commonname","value":"{{form.naming.commonName}}","secret":false,"typeConstraint":"string"},{"name":"displayname","value":"{{form.naming.displayname}}","secret":false,"typeConstraint":"string"},{"name":"mail","value":"{{form.naming.mail}}","secret":false,"typeConstraint":"string"},{"name":"samaccountname","value":"{{form.naming.samaccountname}}","secret":false,"typeConstraint":"string"}]
+$tmpTask = @'
+{"name":"Exchange on-premise - Create new distribution list","script":"$VerbosePreference = \"SilentlyContinue\"\r\n$InformationPreference = \"Continue\"\r\n$WarningPreference = \"Continue\"\r\n\r\n# variables configured in form\r\n$alias = $form.naming.alias \r\n$commonname = $form.naming.commonname\r\n$displayname =$form.naming.displayname\r\n$mail = $form.naming.mail\r\n$samaccountname = $form.naming.samaccountname\r\n\r\n\u003c#----- Exchange On-Premises: Start -----#\u003e\r\n# Connect to Exchange\r\ntry{\r\n    $adminSecurePassword = ConvertTo-SecureString -String \"$ExchangeAdminPassword\" -AsPlainText -Force\r\n    $adminCredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $ExchangeAdminUsername,$adminSecurePassword\r\n    $sessionOption = New-PSSessionOption -SkipCACheck -SkipCNCheck -SkipRevocationCheck\r\n    $exchangeSession = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri $exchangeConnectionUri -Credential $adminCredential -SessionOption $sessionOption -ErrorAction Stop \r\n    #-AllowRedirection\r\n    $session = Import-PSSession $exchangeSession -DisableNameChecking -AllowClobber\r\n    Write-Information \"Successfully connected to Exchange using the URI [$exchangeConnectionUri]\" \r\n    \r\n    $Log = @{\r\n            Action            = \"CreateResource\" # optional. ENUM (undefined = default) \r\n            System            = \"Exchange On-Premise\" # optional (free format text) \r\n            Message           = \"Successfully connected to Exchange using the URI [$exchangeConnectionUri]\" # required (free format text) \r\n            IsError           = $false # optional. Elastic reporting purposes only. (default = $false. $true = Executed action returned an error) \r\n            TargetDisplayName = $exchangeConnectionUri # optional (free format text) \r\n            TargetIdentifier  = $([string]$session.GUID) # optional (free format text) \r\n        }\r\n    #send result back  \r\n    Write-Information -Tags \"Audit\" -MessageData $log \r\n\r\n} catch {\r\n    Write-Error \"Error connecting to Exchange using the URI [$exchangeConnectionUri]. Error: $($_.Exception.Message)\"\r\n    $Log = @{\r\n            Action            = \"CreateResource\" # optional. ENUM (undefined = default) \r\n            System            = \"Exchange On-Premise\" # optional (free format text) \r\n            Message           = \"Failed to connect to Exchange using the URI [$exchangeConnectionUri].\" # required (free format text) \r\n            IsError           = $true # optional. Elastic reporting purposes only. (default = $false. $true = Executed action returned an error) \r\n            TargetDisplayName = $exchangeConnectionUri # optional (free format text) \r\n            TargetIdentifier  = $([string]$session.GUID) # optional (free format text) \r\n        }\r\n    #send result back  \r\n    Write-Information -Tags \"Audit\" -MessageData $log\r\n}\r\n\r\n# Create distributiongroup\r\ntry{\r\n    $exchangeDistributionGroupParams = @{\r\n        Name             = $commonname\r\n        Alias            = $alias\r\n        DisplayName      = $displayname\r\n        SamAccountName   = $samaccountname\r\n        OrganizationalUnit = $ADdistributionGroupsOU\r\n    }\r\n    \r\n    $distributionGroup = New-DistributionGroup @exchangeDistributionGroupParams -ErrorAction Stop\r\n    Write-Information \"Successfully created distributiongroup for $commonname\" \r\n    \r\n    $Log = @{\r\n            Action            = \"CreateResource\" # optional. ENUM (undefined = default) \r\n            System            = \"Exchange On-Premise\" # optional (free format text) \r\n            Message           = \"Successfully created distributiongroup for $commonname\" # required (free format text) \r\n            IsError           = $false # optional. Elastic reporting purposes only. (default = $false. $true = Executed action returned an error) \r\n            TargetDisplayName = $commonname # optional (free format text) \r\n            TargetIdentifier  = $([string]$distributionGroup.Guid) # optional (free format text) \r\n        }\r\n    #send result back  \r\n    Write-Information -Tags \"Audit\" -MessageData $log   \r\n    \r\n}catch{\r\n    Write-Error \"Error creating distributiongroup for $commonname.  Error: $($_.Exception.Message)\"\r\n    $Log = @{\r\n            Action            = \"CreateResource\" # optional. ENUM (undefined = default) \r\n            System            = \"Exchange On-Premise\" # optional (free format text) \r\n            Message           = \"Error creating distributiongroup for $commonname.\" # required (free format text) \r\n            IsError           = $true # optional. Elastic reporting purposes only. (default = $false. $true = Executed action returned an error) \r\n            TargetDisplayName = $commonname # optional (free format text) \r\n            TargetIdentifier  = $([string]$distributionGroup.SID) # optional (free format text) \r\n        }\r\n    #send result back  \r\n    Write-Information -Tags \"Audit\" -MessageData $log \r\n}\r\n\r\n\r\n# Disconnect from Exchange\r\ntry{\r\n    Remove-PsSession -Session $exchangeSession -Confirm:$false -ErrorAction Stop\r\n    Write-Information \"Successfully disconnected from Exchange using the URI [$exchangeConnectionUri]\"     \r\n    $Log = @{\r\n            Action            = \"CreateResource\" # optional. ENUM (undefined = default) \r\n            System            = \"Exchange On-Premise\" # optional (free format text) \r\n            Message           = \"Successfully disconnected from Exchange using the URI [$exchangeConnectionUri]\" # required (free format text) \r\n            IsError           = $false # optional. Elastic reporting purposes only. (default = $false. $true = Executed action returned an error) \r\n            TargetDisplayName = $exchangeConnectionUri # optional (free format text) \r\n            TargetIdentifier  = $([string]$session.GUID) # optional (free format text) \r\n        }\r\n    #send result back  \r\n    Write-Information -Tags \"Audit\" -MessageData $log \r\n} catch {\r\n    Write-Error \"Error disconnecting from Exchange.  Error: $($_.Exception.Message)\"\r\n    $Log = @{\r\n            Action            = \"CreateResource\" # optional. ENUM (undefined = default) \r\n            System            = \"Exchange On-Premise\" # optional (free format text) \r\n            Message           = \"Failed to disconnect from Exchange using the URI [$exchangeConnectionUri].\" # required (free format text) \r\n            IsError           = $true # optional. Elastic reporting purposes only. (default = $false. $true = Executed action returned an error) \r\n            TargetDisplayName = $exchangeConnectionUri # optional (free format text) \r\n            TargetIdentifier  = $([string]$session.GUID) # optional (free format text) \r\n        }\r\n    #send result back  \r\n    Write-Information -Tags \"Audit\" -MessageData $log    \r\n    \r\n}\r\n\u003c#----- Exchange On-Premises: End -----#\u003e","runInCloud":false}
 '@ 
 
-	$delegatedFormTaskGuid = [PSCustomObject]@{} 
-$delegatedFormTaskName = @'
-Exchange-on-premise-create-distribution-group
-'@
-	Invoke-HelloIDAutomationTask -TaskName $delegatedFormTaskName -UseTemplate "False" -AutomationContainer "8" -Variables $tmpVariables -PowershellScript $tmpScript -ObjectGuid $delegatedFormRef.guid -ForceCreateTask $true -returnObject ([Ref]$delegatedFormTaskGuid) 
-} else {
-	Write-Warning "Delegated form '$delegatedFormName' already exists. Nothing to do with the Delegated Form task..." 
-}
-<# End: Delegated Form Task #>
+Invoke-HelloIDDelegatedForm -DelegatedFormName $delegatedFormName -DynamicFormGuid $dynamicFormGuid -AccessGroups $delegatedFormAccessGroupGuids -Categories $delegatedFormCategoryGuids -UseFaIcon "True" -FaIcon "fa fa-at" -task $tmpTask -returnObject ([Ref]$delegatedFormRef) 
+<# End: Delegated Form #>
+

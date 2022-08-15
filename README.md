@@ -9,6 +9,7 @@ This HelloID Service Automation Delegated Form provides Exchange On-Premise Dist
 ## Versioning
 | Version | Description | Date |
 | - | - | - |
+| 1.0.2   | Added version number and updated code for SA-agent and auditlogging | 2022/08/03  |
 | 1.0.1   | Added version number and updated all-in-one script | 2021/11/16  |
 | 1.0.0   | Initial release | 2021/04/29  |
 
@@ -48,7 +49,7 @@ This Delegated Form uses the following resources in order to run
 ### Powershell data source 'Exchange-create-check-names-distributiongroup'
 This Powershell data source runs an Active Directory query to verify the name of the distribution group is not already present.
 
-### Delegated form task 'Exchange-on-premise-create-distribution-group'
+### Delegated form task 'Exchange on-premise - Create new distribution list'
 This delegated form task will create the distribution group in Exchange with a corresponding AD group.
 
 ## Getting help
